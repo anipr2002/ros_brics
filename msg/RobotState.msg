@@ -1,0 +1,2 @@
+string current_task
+geometry_msgs/PoseStamped target_pose

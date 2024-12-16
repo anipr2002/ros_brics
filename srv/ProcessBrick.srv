@@ -1,0 +1,4 @@
+geometry_msgs/PoseStamped brick_pose
+string status
+---
+bool success

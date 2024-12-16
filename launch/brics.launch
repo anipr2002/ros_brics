@@ -1,0 +1,57 @@
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    ur_control_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            FindPackageShare('ur_robot_driver'), '/launch/ur_control.launch.py'
+        ]),
+        launch_arguments={
+            'ur_type': 'ur5e',
+            'use_tool_communication':"true",
+            'headless_mode': 'true',
+            'robot_ip': '192.168.1.102',
+            # 'initial_joint_controller':'joint_trajectory_controller'
+        }.items()
+    )
+
+    realsense_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            FindPackageShare('realsense2_camera'), '/launch/rs_launch.py'
+        ])
+    )
+
+    static_transform_publisher = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="static_transform_publisher",
+        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "1.0", "world", "base_link"],
+        output="screen",
+    )
+
+    robot_state_node = Node(
+        package='ros_brics',
+        executable='robot_state.py',  # Replace with your executable
+        name='robot_state',
+        output='screen',
+        parameters=[{'initial_state': 'Idle'}]  # Set initial state to Idle
+    )
+
+
+    return LaunchDescription([
+        ur_control_launch,
+        realsense_launch,
+        static_transform_publisher,
+        robot_state_node
+    ])
+
+
+    # your_node = Node(
+    #     package='your_package_name',
+    #     executable='your_node_script',
+    #     name='your_node_name',
+    #     output='screen'
+    # )
