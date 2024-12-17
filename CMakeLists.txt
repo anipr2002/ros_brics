@@ -23,6 +23,8 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_servo REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 
 # C++ dependencies
 include_directories(include)
@@ -31,15 +33,19 @@ include_directories(include)
 add_executable(move_program src/move_program.cpp)
 add_executable(waypoint_navigator src/waypoint_navigator.cpp)
 add_executable(scheduler src/scheduler.cpp)
+add_executable(test_move src/test_move.cpp)
 
 ament_target_dependencies(move_program rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
 ament_target_dependencies(waypoint_navigator rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
 ament_target_dependencies(scheduler rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
+ament_target_dependencies(test_move rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
+
 # Install cpp executables
 install(TARGETS
     move_program
     waypoint_navigator
     scheduler
+    test_move
     DESTINATION lib/${PROJECT_NAME})
 
 # Install python modules
@@ -53,6 +59,8 @@ install(PROGRAMS
   scripts/yolo_node.py
   scripts/yolo_subscriber.py
   scripts/robot_state.py
+  scripts/test_movepy.py
+  scripts/save_transform.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
