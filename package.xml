@@ -13,6 +13,8 @@
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <depend>rclpy</depend>
+  <exec_depend>opencv-python</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>tf2_ros</depend>

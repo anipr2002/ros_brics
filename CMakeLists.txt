@@ -61,6 +61,9 @@ install(PROGRAMS
   scripts/robot_state.py
   scripts/test_movepy.py
   scripts/save_transform.py
+  scripts/aruco_publisher.py
+  scripts/yolov8_obb_publisher.py
+  scripts/yolov8_obb_subscriber.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -73,6 +76,8 @@ install(DIRECTORY launch
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Yolo.msg"
   "msg/RobotState.msg"
+  "msg/InferenceResult.msg"
+  "msg/Yolov8Inference.msg"
   "srv/ProcessBrick.srv"
   DEPENDENCIES geometry_msgs sensor_msgs
 )

@@ -120,7 +120,7 @@ class UR5eTCPTransformNode(Node):
 
             # Extract rotation (as quaternion)
             rotation = transform.transform.rotation
-            quat = [rotation.w, rotation.x, rotation.y, rotation.z]
+            quat = [rotation.x, rotation.y, rotation.z, rotation.w]  # Changed order to [qx, qy, qz, qw]
 
             # Convert quaternion to rotation matrix
             rot_matrix = tf3d.quaternions.quat2mat(quat)

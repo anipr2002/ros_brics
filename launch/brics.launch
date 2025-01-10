@@ -40,18 +40,18 @@ def generate_launch_description():
         parameters=[{'initial_state': 'Idle'}]  # Set initial state to Idle
     )
 
+    yolo_node =  Node(
+        package='ros_brics',
+        executable='yolov8_obb_publisher.py',
+        name='camera_subscriber',
+        output='screen'
+    )
+
 
     return LaunchDescription([
         ur_control_launch,
         realsense_launch,
         static_transform_publisher,
-        robot_state_node
+        robot_state_node,
+        yolo_node
     ])
-
-
-    # your_node = Node(
-    #     package='your_package_name',
-    #     executable='your_node_script',
-    #     name='your_node_name',
-    #     output='screen'
-    # )

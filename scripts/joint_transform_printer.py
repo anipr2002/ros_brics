@@ -34,7 +34,7 @@ class TFMatrixPrinter(Node):
             # Extract rotation quaternion and convert to rotation matrix
             q = transform.transform.rotation
             quaternion = [q.x, q.y, q.z, q.w]
-            rotation_matrix = tf3d.quaternions.quat2mat([q.w, q.x, q.y, q.z])  # Ensure correct quaternion order
+            rotation_matrix = tf3d.quaternions.quat2mat([q.x, q.y, q.z, q.wn])  # Ensure correct quaternion order
 
             # Construct full 4x4 transformation matrix
             transform_matrix = np.eye(4)
