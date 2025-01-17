@@ -10,14 +10,17 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from ros_brics.msg import InferenceResult
 from ros_brics.msg import Yolov8Inference
+import tf2_ros
+from tf2_ros import TransformListener, Buffer
+from tf_transformations import quaternion_matrix
+import math 
 
 bridge = CvBridge()
 
 class Camera_subscriber(Node):
     def __init__(self):
         super().__init__('camera_subscriber')
-        self.model = YOLO(
-            os.environ['HOME'] + '/CODE/ROS_WS/ros_ws/src/ros_brics/config/BRICS/trains/InitialPass/InitialPass_control/weights/best.pt')
+        self.model = YOLO('/root/ros_ws/src/ros_brics/config/trains/InitialPass/InitialPass_control/weights/best.pt')
         self.yolov8_inference = Yolov8Inference()
         self.subscription = self.create_subscription(
             Image,
@@ -28,6 +31,15 @@ class Camera_subscriber(Node):
         self.yolov8_pub = self.create_publisher(
             Yolov8Inference, "/Yolov8_Inference", 1)
         self.img_pub = self.create_publisher(Image, "/inference_result", 1)
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        self.camera_matrix = np.array([
+            [609.62548, 0.0000, 325.14709],
+            [0.0000, 609.64825, 237.64407],
+            [0, 0, 1]
+        ])
 
     def calculate_center_point(self, coordinates):
         points = np.array(coordinates).reshape(4, 2)
@@ -92,8 +104,66 @@ class Camera_subscriber(Node):
 
         return image
 
+    def calculate_robot(self, center_point):
+        """
+        Calculate the transformation matrix to move the robot to the YOLO-detected center point.
+        Parameters:
+            center_point (list): The [x, y] center point from YOLO bounding box in the camera frame.
+        """
+        T_cam_tool = np.array([
+            [1, 0, 0, -0.031],
+            [0, 1, 0, -0.06],
+            [0, 0, 1, 0.069],
+            [0, 0, 0, 1]
+        ])
+
+        K_inv = np.linalg.inv(self.camera_matrix)
+
+        try:
+            # Lookup transform from world to tool0
+            transform = self.tf_buffer.lookup_transform(
+                'world',
+                'tool0',
+                rclpy.time.Time())
+
+            # Extract translation and rotation
+            translation = transform.transform.translation
+            tx, ty, tz = translation.x, translation.y, translation.z  # Get current position
+            rotation = transform.transform.rotation
+            qx, qy, qz, qw = rotation.x, rotation.y, rotation.z, rotation.w
+
+            # Convert quaternion to a 4x4 rotation matrix
+            rotation_matrix = quaternion_matrix([qx, qy, qz, qw])
+            T_base_tool = np.eye(4)
+            T_base_tool[:3, :3] = rotation_matrix[:3, :3]
+            T_base_tool[:3, 3] = [tx, ty, tz]
+
+            # Compute camera-to-base transformation
+            T_base_cam = T_base_tool @ np.linalg.inv(T_cam_tool)
+
+            pixel_coords = np.array([center_point[0], center_point[1], 1])
+            # Back-project to 3D
+            depth = 0.5
+            X_c, Y_c, Z_c = depth * (K_inv @ pixel_coords)
+
+            # Use the center point's x and y, and the tool's current z as the target in the camera frame
+            T_target_cam = np.eye(4)
+            T_target_cam[:3, 3] = [X_c, Y_c, tz]  # Use current z
+
+            # Compute the final target pose in the robot's base frame
+            T_base_target = T_base_cam @ T_target_cam
+
+            # Log the resulting transformation matrix
+            matrix_str = "[" + "\n ".join(["[" + ", ".join(f"{value:.6f}" for value in row) + "]" for row in T_base_target]) + "]"
+            self.get_logger().info(f"Transformation matrix to YOLO center with current z: \n{matrix_str}")
+
+        except tf2_ros.TransformException as e:
+            self.get_logger().warn(f"Could not get transform: {e}")
+
+
     def camera_callback(self, data):
         img = bridge.imgmsg_to_cv2(data, "bgr8")
+        
         results = self.model(img, conf=0.90)
         self.yolov8_inference.header.frame_id = "inference"
         self.yolov8_inference.header.stamp = camera_subscriber.get_clock().now().to_msg()
@@ -116,12 +186,22 @@ class Camera_subscriber(Node):
 
                     # Calculate midpoint and grasp points
                     midpoint = self.calculate_center_point(coordinates)
+
+                    self.calculate_robot(midpoint)
                     grasp_point1, grasp_point2 = self.calculate_grasp_points(coordinates)
 
                     # Store points in the message
                     self.inference_result.midpoint = midpoint
                     self.inference_result.grasp_point1 = grasp_point1  # You'll need to add these fields to your msg file
                     self.inference_result.grasp_point2 = grasp_point2
+
+                    dx = grasp_point1[0] - grasp_point2[0]
+                    dy = grasp_point1[1] - grasp_point2[1] 
+
+                    angle_radians = math.atan2(dy, dx)
+                    angle_degrees = math.degrees(angle_radians)
+                    self.get_logger().info(f"Angle in radians: {angle_radians}")
+                    self.get_logger().info(f"Angle in degrees: {angle_degrees}")
 
                     # Draw points and connecting line on the annotated frame
                     annotated_frame = self.draw_points(annotated_frame, midpoint, grasp_point1, grasp_point2)
@@ -133,6 +213,9 @@ class Camera_subscriber(Node):
 
         self.yolov8_pub.publish(self.yolov8_inference)
         self.yolov8_inference.yolov8_inference.clear()
+
+        height, width = annotated_frame.shape[:2]
+        cv2.circle(annotated_frame, (width // 2, height // 2), 5, (0, 0, 0), -1)
 
         img_msg = bridge.cv2_to_imgmsg(annotated_frame)
         self.img_pub.publish(img_msg)

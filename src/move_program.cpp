@@ -21,16 +21,16 @@ int main(int argc, char *argv[])
     // Define the goal pose
     geometry_msgs::msg::Pose GoalPose;
     // Use the provided quaternion for orientation
-    GoalPose.orientation.x = 0.051472024082165634;
-    GoalPose.orientation.y = 0.9986448954794231;
-    GoalPose.orientation.z = 0.007575636956345688;
-    GoalPose.orientation.w = -0.0012701159327495452;
+    GoalPose.orientation.x = 1;
+    GoalPose.orientation.y = 0;
+    GoalPose.orientation.z = 0;
+    GoalPose.orientation.w = 0;
 
 // (x=0.09257420272627895, y=-0.6782116709819181, z=0.5165066304554246)
     // Set a position; adjust these values as necessary to avoid collisions
-    GoalPose.position.x = 0.2652;
-    GoalPose.position.y = -0.1062;
-    GoalPose.position.z = 0.5165066304554246;
+    GoalPose.position.x = 0.137348, 
+    GoalPose.position.y = 0.499122;
+    GoalPose.position.z = 0.688045;
 
     // Set the pose target
     MoveGroupInterface.setPoseTarget(GoalPose);

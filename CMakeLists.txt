@@ -25,6 +25,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 # C++ dependencies
 include_directories(include)
@@ -34,11 +35,15 @@ add_executable(move_program src/move_program.cpp)
 add_executable(waypoint_navigator src/waypoint_navigator.cpp)
 add_executable(scheduler src/scheduler.cpp)
 add_executable(test_move src/test_move.cpp)
+add_executable(move_program_gui src/move_program_gui.cpp)
 
+ament_target_dependencies(move_program_gui rclcpp moveit_ros_planning_interface tf2_geometry_msgs)
 ament_target_dependencies(move_program rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
 ament_target_dependencies(waypoint_navigator rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
 ament_target_dependencies(scheduler rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
 ament_target_dependencies(test_move rclcpp tf2_eigen tf2_geometry_msgs tf2_ros moveit_core moveit_ros_planning moveit_ros_planning_interface moveit_servo)
+
+target_link_libraries(move_program_gui Qt5::Widgets)
 
 # Install cpp executables
 install(TARGETS
@@ -46,6 +51,7 @@ install(TARGETS
     waypoint_navigator
     scheduler
     test_move
+    move_program_gui
     DESTINATION lib/${PROJECT_NAME})
 
 # Install python modules
@@ -64,6 +70,8 @@ install(PROGRAMS
   scripts/aruco_publisher.py
   scripts/yolov8_obb_publisher.py
   scripts/yolov8_obb_subscriber.py
+  scripts/printer.py
+  scripts/camera_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

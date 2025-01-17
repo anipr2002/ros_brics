@@ -11,7 +11,6 @@ def generate_launch_description():
         ]),
         launch_arguments={
             'ur_type': 'ur5e',
-            'use_tool_communication':"true",
             'headless_mode': 'true',
             'robot_ip': '192.168.1.102',
             # 'initial_joint_controller':'joint_trajectory_controller'
@@ -47,11 +46,19 @@ def generate_launch_description():
         output='screen'
     )
 
+    camera_node = Node(
+        package='ros_brics',
+        executable='camera_publisher.py',
+        name='camera_publisher',
+        output='screen'
+    )
+
 
     return LaunchDescription([
         ur_control_launch,
         realsense_launch,
         static_transform_publisher,
         robot_state_node,
-        yolo_node
+        yolo_node,
+        camera_node
     ])
