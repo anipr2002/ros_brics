@@ -12,8 +12,10 @@ from ros_brics.msg import InferenceResult
 from ros_brics.msg import Yolov8Inference
 import tf2_ros
 from tf2_ros import TransformListener, Buffer
-from tf_transformations import quaternion_matrix
+from tf_transformations import quaternion_matrix, quaternion_from_matrix
 import math 
+from geometry_msgs.msg import Pose
+from ros_brics.msg import DetectionResult 
 
 bridge = CvBridge()
 
@@ -32,6 +34,7 @@ class Camera_subscriber(Node):
             Yolov8Inference, "/Yolov8_Inference", 1)
         self.img_pub = self.create_publisher(Image, "/inference_result", 1)
 
+        self.detection_pub = self.create_publisher(DetectionResult, "/detection_result", 10)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -153,10 +156,25 @@ class Camera_subscriber(Node):
             # Compute the final target pose in the robot's base frame
             T_base_target = T_base_cam @ T_target_cam
 
+            target_pose = Pose()
+            target_pose.position.x = T_base_target[0, 3]
+            target_pose.position.y = T_base_target[1, 3]
+            target_pose.position.z = T_base_target[2, 3]
+
+            # Extract orientation from the rotation matrix
+            target_orientation = quaternion_from_matrix(T_base_target)
+            target_pose.orientation.x = target_orientation[0]
+            target_pose.orientation.y = target_orientation[1]
+            target_pose.orientation.z = target_orientation[2]
+            target_pose.orientation.w = target_orientation[3]
+
+            # Publish the result as DetectionResult
             # Log the resulting transformation matrix
             matrix_str = "[" + "\n ".join(["[" + ", ".join(f"{value:.6f}" for value in row) + "]" for row in T_base_target]) + "]"
             self.get_logger().info(f"Transformation matrix to YOLO center with current z: \n{matrix_str}")
 
+            return target_pose
+        
         except tf2_ros.TransformException as e:
             self.get_logger().warn(f"Could not get transform: {e}")
 
@@ -177,6 +195,7 @@ class Camera_subscriber(Node):
                     self.inference_result = InferenceResult()
                     b = box.xyxyxyxy[0].to('cpu').detach().numpy().copy()
                     c = box.cls
+                    confidence = float(box.conf[0])
                     self.inference_result.class_name = self.model.names[int(c)]
 
                     # Reshape coordinates and store them
@@ -187,7 +206,7 @@ class Camera_subscriber(Node):
                     # Calculate midpoint and grasp points
                     midpoint = self.calculate_center_point(coordinates)
 
-                    self.calculate_robot(midpoint)
+                    
                     grasp_point1, grasp_point2 = self.calculate_grasp_points(coordinates)
 
                     # Store points in the message
@@ -202,6 +221,16 @@ class Camera_subscriber(Node):
                     angle_degrees = math.degrees(angle_radians)
                     self.get_logger().info(f"Angle in radians: {angle_radians}")
                     self.get_logger().info(f"Angle in degrees: {angle_degrees}")
+
+                    target_pose = self.calculate_robot(midpoint)
+
+                    detection_msg = DetectionResult()
+                    detection_msg.class_name = self.inference_result.class_name
+                    detection_msg.confidence = confidence
+                    detection_msg.target_pose = target_pose
+                    detection_msg.gripper_rotate = angle_degrees
+                    
+                    self.detection_pub.publish(detection_msg)
 
                     # Draw points and connecting line on the annotated frame
                     annotated_frame = self.draw_points(annotated_frame, midpoint, grasp_point1, grasp_point2)

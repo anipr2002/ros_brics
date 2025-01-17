@@ -13,6 +13,7 @@ def generate_launch_description():
             'ur_type': 'ur5e',
             'headless_mode': 'true',
             'robot_ip': '192.168.1.102',
+            'launch_rviz': 'false'
             # 'initial_joint_controller':'joint_trajectory_controller'
         }.items()
     )
@@ -23,13 +24,23 @@ def generate_launch_description():
         ])
     )
 
+    ur_moveit_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+        FindPackageShare('ur_moveit_config'), '/launch/ur_moveit.launch.py'
+        ]),
+        launch_arguments={
+            'ur_type': 'ur5e',
+            'launch_rviz': 'true'
+        }.items()
+    )
+
     static_transform_publisher = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="static_transform_publisher",
         arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "1.0", "world", "base_link"],
         output="screen",
-    )
+    ) 
 
     robot_state_node = Node(
         package='ros_brics',
@@ -53,12 +64,28 @@ def generate_launch_description():
         output='screen'
     )
 
+    gripper_node = Node(
+        package='robotiq_gripper_ros2',
+        executable='gripper_service_node.py',
+        name='gripper_service_node',
+        output='screen'
+    )
+
+    move_to_pose_node = Node(
+        package='ros_brics',
+        executable='move_to_pose_server',
+        name='move_to_pose_server',
+        output='screen'
+    )
 
     return LaunchDescription([
         ur_control_launch,
         realsense_launch,
+        ur_moveit_launch,
         static_transform_publisher,
         robot_state_node,
         yolo_node,
-        camera_node
+        camera_node,
+        gripper_node,
+        move_to_pose_node
     ])
